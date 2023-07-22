@@ -1,0 +1,4 @@
+selenium==3.141.0
+urllib3==1.25.11
+webdriver-manager==3.8.6
+APScheduler==3.10.1
