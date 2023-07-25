@@ -4,19 +4,18 @@ from typing import List, Dict, Tuple
 import time
 import os
 from selenium import webdriver
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.common.by import By
-from selenium.webdriver.firefox.options import Options
 from apscheduler.schedulers.blocking import BlockingScheduler
-from webdriver_manager.firefox import GeckoDriverManager
+from selenium.webdriver.chrome.options import Options
+from selenium import webdriver
 
 # Setup logger
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # Constants
-USER_XPATH = '//*[@id="InputLoginValue"]'
-PASS_XPATH = '//*[@id="InputPassword"]'
-BTN_XPATH = '//*[@id="BtnSubmit"]'
 PROBABLE_PITCHER_XPATH = './/strong[@title="Probable Pitcher"]'
 PITCHER_ROWS_XPATH = '//*[@id="fitt-analytics"]/div/div[5]/div[2]/div[3]/div/div/div/div[3]/div/div[2]/div/div/table/tbody/tr'
 NUM_STARTING_PITCHER_SLOTS = 6
@@ -26,21 +25,25 @@ class FantasyBaseballManager:
         self.username: str = os.getenv('FANTASY_USERNAME')
         self.password: str = os.getenv('FANTASY_PASSWORD')
         self.team_page_url: str = os.getenv('TEAM_PAGE_URL')
-        self.driver: webdriver.Firefox = self.create_driver()
+        self.driver: webdriver.Chrome = self.create_driver()
 
     def create_driver(self) -> webdriver.Firefox:
-        options = Options()
-        options.headless = True
-        driver = webdriver.Firefox(executable_path=GeckoDriverManager().install(), options=options)
+        chrome_options = Options()
+        chrome_options.add_argument("--headless=new")
+        chrome_options.add_argument("--no-sandbox")
+        chrome_options.add_argument("--disable-dev-shm-usage")
+        chrome_prefs = {}
+        chrome_options.experimental_options["prefs"] = chrome_prefs
+        chrome_prefs["profile.default_content_settings"] = {"images": 2}
+        driver = webdriver.Chrome(options=chrome_options)
         return driver
 
     def login_to_website(self) -> None:
         self.driver.get(self.team_page_url)
-        time.sleep(10)
-        self.driver.switch_to.frame(self.driver.find_element_by_id('oneid-iframe'))
-        self.driver.find_element(By.XPATH, USER_XPATH).send_keys(self.username)
-        self.driver.find_element(By.XPATH, PASS_XPATH).send_keys(self.password)
-        self.driver.find_element(By.XPATH, BTN_XPATH).click()
+        WebDriverWait(self.driver, 60).until(EC.frame_to_be_available_and_switch_to_it((By.ID, "oneid-iframe")))
+        WebDriverWait(self.driver, 60).until(EC.element_to_be_clickable((By.ID, "InputLoginValue"))).send_keys(self.username)
+        WebDriverWait(self.driver, 60).until(EC.element_to_be_clickable((By.ID, "InputPassword"))).send_keys(self.password)
+        WebDriverWait(self.driver, 60).until(EC.element_to_be_clickable((By.ID, "BtnSubmit"))).click()
         time.sleep(10)
 
     def get_empty_slots(self) -> List[int]:
